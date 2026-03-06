@@ -1,0 +1,7 @@
+{
+  "name": "Remix cloudflare: Peta Fasilitas Publik",
+  "description": "Aplikasi pelaporan fasilitas publik rusak berbasis peta interaktif dengan fitur geolokasi dan unggah foto.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

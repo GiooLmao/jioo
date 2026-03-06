@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peta Fasilitas Publik</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Leaflet Geosearch CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.css" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Poppins', sans-serif;
+      }
+      
+      /* --- LEAFLET GEOSEARCH CUSTOMIZATION (Split & Modern Look) --- */
+      
+      .leaflet-control-geosearch {
+         z-index: 1000;
+         /* Ensure the container has enough width on desktop */
+         min-width: 280px; 
+         margin-left: 50px !important; /* Avoid overlap with zoom controls */
+         margin-top: 10px !important;
+      }
+
+      /* 1. THE SEARCH BAR (Top Pill) */
+      .leaflet-control-geosearch form {
+        /* Layout & Position */
+        position: relative !important; /* Anchor for absolute results */
+        display: flex !important;
+        align-items: center !important;
+        margin-bottom: 0 !important; /* Remove native margin */
+        
+        /* Shape & Size */
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.6) !important;
+        border-radius: 9999px !important; /* Perfect Pill */
+        padding: 4px 8px !important;
+        height: 56px !important; /* Taller for better touch targets */
+        
+        /* Shadow & Visuals */
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -2px rgba(0, 0, 0, 0.05) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Focus Effect on Bar */
+      .leaflet-control-geosearch form:focus-within {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px -5px rgba(59, 130, 246, 0.25) !important; /* Blue glow */
+        border-color: #93c5fd !important; /* blue-300 */
+        background: white !important;
+      }
+
+      /* Input Field Styling */
+      .leaflet-control-geosearch form input {
+        color: #1e293b !important; /* slate-800 */
+        background: transparent !important;
+        height: 100% !important;
+        font-size: 16px !important; /* Larger text */
+        border: none !important;
+        outline: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        padding-left: 16px !important;
+        padding-right: 48px !important; /* Space for the reset button */
+      }
+      
+      /* Search Icon/Button & RESET Button Customization */
+      .leaflet-control-geosearch a.reset {
+        /* Hide default text 'x' */
+        font-size: 0 !important;
+        color: transparent !important;
+        text-decoration: none !important;
+        border: none !important;
+        
+        /* Layout & Position */
+        position: absolute !important;
+        right: 12px !important; /* Offset from right edge (fixing 'mepet') */
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        
+        /* Sizing */
+        width: 32px !important; 
+        height: 32px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        
+        /* Icon via Background (Clean SVG Cross) */
+        background-color: transparent !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 18L18 6M6 6l12 12' /%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        background-size: 20px 20px !important;
+        
+        /* Shape & Interactive */
+        border-radius: 50% !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        z-index: 10 !important;
+      }
+
+      /* Hover State for X Button */
+      .leaflet-control-geosearch a.reset:hover {
+        background-color: #fee2e2 !important; /* red-100 */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23ef4444' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 18L18 6M6 6l12 12' /%3E%3C/svg%3E") !important;
+        transform: translateY(-50%) scale(1.1) !important;
+      }
+
+      /* 2. THE RESULTS LIST (Floating Dropdown) - SEPARATE */
+      .leaflet-control-geosearch .results {
+        /* CRITICAL FIX: Hide initially so no empty white box appears */
+        display: none !important;
+
+        /* Position: Floating below the bar */
+        position: absolute !important;
+        top: 100% !important; /* Push completely below form */
+        left: 0 !important;
+        right: 0 !important;
+        margin-top: 14px !important; /* Gap between bar and results */
+        
+        /* Visuals */
+        background: white !important;
+        border-radius: 24px !important; /* Rounded rectangle */
+        border: 1px solid #f1f5f9 !important;
+        box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15) !important;
+        
+        /* Content Control */
+        overflow: hidden !important;
+        padding: 8px 0 !important;
+        width: 100% !important; /* Match width of search bar */
+      }
+      
+      /* Only show results when the library adds the 'active' class */
+      .leaflet-control-geosearch .results.active {
+         display: block !important;
+         animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      
+      /* Hide 'active' class on form to prevent library from messing up shape */
+      .leaflet-control-geosearch form.open {
+        border-radius: 9999px !important; /* Keep it pill shaped even when open */
+      }
+
+      /* Result Items Styling */
+      .leaflet-control-geosearch .results > * {
+        background: transparent !important;
+        border: none !important;
+        color: #475569 !important; /* slate-600 */
+        padding: 14px 24px !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-bottom: 1px solid #f8fafc !important;
+      }
+
+      .leaflet-control-geosearch .results > *:last-child {
+        border-bottom: none !important;
+      }
+      
+      /* Hover State for Items */
+      .leaflet-control-geosearch .results > *:hover {
+        background-color: #eff6ff !important; /* blue-50 */
+        color: #2563eb !important; /* blue-600 */
+        padding-left: 28px !important; /* Subtle slide effect */
+      }
+      
+      /* Active/Selected Item */
+      .leaflet-control-geosearch .results > .active, 
+      .leaflet-control-geosearch .results > .active:hover {
+        background-color: #eff6ff !important;
+        border-left: 3px solid #2563eb !important;
+        color: #1e40af !important;
+      }
+      
+      /* Popup Font Fix */
+      .leaflet-popup-content-wrapper {
+        font-family: 'Poppins', sans-serif;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      }
+
+      @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Hide Search Control during report creation */
+      .hide-search-control .leaflet-control-geosearch {
+        display: none !important;
+      }
+      /* -------------------------------- */
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react/": "https://esm.sh/react@18.3.1/",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.344.0",
+    "leaflet": "https://esm.sh/leaflet@1.9.4",
+    "leaflet/": "https://esm.sh/leaflet@1.9.4/",
+    "react-leaflet": "https://esm.sh/react-leaflet@4.2.1",
+    "leaflet-geosearch": "https://esm.sh/leaflet-geosearch@3.11.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
